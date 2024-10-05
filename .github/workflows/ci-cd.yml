@@ -1,0 +1,53 @@
+name: Streamlit Model CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'  # Ensure this matches your project's Python version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # Run the streamlit app on localhost and use artifact to test it
+    - name: Test Streamlit app
+      run: streamlit run main.py --server.headless true &
+      continue-on-error: true  # Continue if it runs but errors
+
+    # Optional: run some unit tests if you have them in a test_model.py file
+    - name: Run tests
+      run: pytest test_model.py
+
+    # Optionally, if your model training generates new artifacts, save them
+    - name: Upload Model Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-files
+        path: ./model-test/  # Adjust path as necessary
+
+    # Commit and push changes for newly generated model or app files
+    - name: Add and commit new files
+      run: |
+        git config --local user.email "your-github-email@example.com"
+        git config --local user.name "your-github-username"
+        git add .
+        git commit -m "CI/CD: add new artifacts" || echo "Nothing to commit"
+      
+    - name: Push changes
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: git push origin main
