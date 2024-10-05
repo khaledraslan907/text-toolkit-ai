@@ -4,3 +4,7 @@ torch
 pandas
 spacy
 numpy
+textblob
+summarizer
+sentencepiece
+scikit-learn
