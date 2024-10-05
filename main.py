@@ -1,83 +1,90 @@
 import streamlit as st
 from transformers import pipeline
-import pandas as pd
-import torch
-import gc
+from textblob import TextBlob
+from summarizer import Summarizer
 
-# Task-specific functions
-def perform_text_summarization():
-    user_input = st.text_area("Enter the text you want to summarize:")
-    if user_input:
-        with st.spinner("Summarizing the text..."):
-            summarizer = pipeline("summarization", model="facebook/bart-large-cnn", trust_remote_code=True)
-            summary = summarizer(user_input, max_length=100, min_length=30, do_sample=False)
-            st.write(f"Summary: {summary[0]['summary_text']}")
-        
-def perform_translation():
-    user_input = st.text_area("Enter the text you want to translate:")
-    if user_input:
-        target_language = st.selectbox("Select the target language", ["French", "Spanish", "German", "Arabic"])
-        lang_codes = {"French": "fr", "Spanish": "es", "German": "de", "Arabic": "ar"}
-        with st.spinner("Translating the text..."):
-            translator = pipeline("translation", model=f"Helsinki-NLP/opus-mt-en-{lang_codes[target_language]}", trust_remote_code=True)
-            translation = translator(user_input)
-            st.write(f"Translation: {translation[0]['translation_text']}")
+# Language codes for translation
+lang_codes = {
+    "French": "fr",
+    "German": "de",
+    "Spanish": "es",
+    "Italian": "it",
+    "Dutch": "nl"
+}
 
-def perform_text_generation():
-    user_input = st.text_area("Enter the beginning of your text (the model will generate the continuation):")
-    if user_input:
-        with st.spinner("Generating text..."):
-            text_generator = pipeline("text-generation", model="gpt2", trust_remote_code=True)
-            generated_text = text_generator(user_input, max_length=100, num_return_sequences=1)
-            st.write(f"Generated Text: {generated_text[0]['generated_text']}")
-
-def perform_ner():
-    user_input = st.text_area("Enter text to extract named entities:")
-    if user_input:
-        with st.spinner("Extracting named entities..."):
-            ner_pipeline = pipeline("ner", grouped_entities=True, trust_remote_code=True)
-            entities = ner_pipeline(user_input)
-            st.write("Named Entities:")
-            for entity in entities:
-                st.write(f"{entity['word']} ({entity['entity_group']}) - Confidence: {entity['score']:.2f}")
-
-def perform_question_answering():
-    st.write("Upload a text document (plain text only) or enter a paragraph for question answering.")
-    uploaded_file = st.file_uploader("Upload a text file", type=["txt"])
-    if uploaded_file:
-        document = uploaded_file.read().decode("utf-8")
+# Function for sentiment analysis
+def perform_sentiment_analysis(input_text):
+    blob = TextBlob(input_text)
+    sentiment_score = blob.sentiment.polarity
+    if sentiment_score > 0:
+        return "Positive", sentiment_score
+    elif sentiment_score == 0:
+        return "Neutral", sentiment_score
     else:
-        document = st.text_area("Or, paste a paragraph:")
+        return "Negative", sentiment_score
 
-    if document:
-        st.write("Document:")
-        st.write(document)
-        question = st.text_input("Enter your question:")
-        if question:
-            with st.spinner("Answering your question..."):
-                qa_pipeline = pipeline("question-answering", trust_remote_code=True)
-                answer = qa_pipeline(question=question, context=document)
-                st.write(f"Answer: {answer['answer']}")
+# Function for text summarization
+def perform_summarization(input_text):
+    model = Summarizer()
+    summary = model(input_text, num_sentences=3)
+    return summary
 
-# Main app logic
-st.title("Text Toolkit AI")
-task = st.sidebar.selectbox("Select a task", 
-                            ("Text Summarization", 
-                             "Translation", 
-                             "Text Generation", 
-                             "Named Entity Recognition", 
-                             "Question Answering"))
+# Function for translation with error handling
+def perform_translation(input_text, target_language):
+    try:
+        model_name = f"Helsinki-NLP/opus-mt-en-{lang_codes[target_language]}"
+        translator = pipeline("translation", model=model_name, trust_remote_code=True)
+        translated_text = translator(input_text)[0]['translation_text']
+        return translated_text
+    except ValueError as ve:
+        st.error(f"Error: {ve}")
+    except KeyError:
+        st.error("The selected target language is not supported.")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
 
+# Streamlit UI
+st.title("Multitasking AI Application")
+
+# Sidebar for navigation
+st.sidebar.title("Tasks")
+task = st.sidebar.radio("Choose a task:", ("Sentiment Analysis", "Text Summarization", "Translation"))
+
+# Input text area
+input_text = st.text_area("Enter your text here:")
+
+# Execution button
+execute_button = st.button("Execute Task")
+
+# Sentiment Analysis
+if task == "Sentiment Analysis":
+    if execute_button:
+        if input_text:
+            sentiment, score = perform_sentiment_analysis(input_text)
+            st.write(f"Sentiment: {sentiment}")
+            st.write(f"Sentiment Score: {score}")
+        else:
+            st.error("Please enter some text for sentiment analysis.")
+
+# Text Summarization
 if task == "Text Summarization":
-    perform_text_summarization()
-elif task == "Translation":
-    perform_translation()
-elif task == "Text Generation":
-    perform_text_generation()
-elif task == "Named Entity Recognition":
-    perform_ner()
-elif task == "Question Answering":
-    perform_question_answering()
+    if execute_button:
+        if input_text:
+            summary = perform_summarization(input_text)
+            st.write("Summary:")
+            st.write(summary)
+        else:
+            st.error("Please enter some text for summarization.")
 
-# Call garbage collection at the end to free up memory
-gc.collect()
+# Translation
+if task == "Translation":
+    target_language = st.selectbox("Choose target language:", list(lang_codes.keys()))
+    
+    if execute_button:
+        if input_text:
+            translated_text = perform_translation(input_text, target_language)
+            if translated_text:
+                st.write("Translated Text:")
+                st.write(translated_text)
+        else:
+            st.error("Please enter text to translate.")
