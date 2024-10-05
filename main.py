@@ -65,7 +65,7 @@ def perform_question_answering():
                     st.write(f"Answer: {answer['answer']}")
 
 # Main app logic
-st.title("Text Toolkit")
+st.title("Text Toolkit AI")
 task = st.sidebar.selectbox("Select a task", 
                             ("Text Summarization", 
                              "Translation", 
