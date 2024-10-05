@@ -8,18 +8,18 @@ import gc
 def perform_text_summarization():
     user_input = st.text_area("Enter the text you want to summarize:")
     if user_input:
-        if st.button("Execute Summarization"):
+        if st.button("Execute"):
             with st.spinner("Summarizing the text..."):
                 summarizer = pipeline("summarization", model="facebook/bart-large-cnn", trust_remote_code=True)
                 summary = summarizer(user_input, max_length=100, min_length=30, do_sample=False)
                 st.write(f"Summary: {summary[0]['summary_text']}")
-        
+
 def perform_translation():
     user_input = st.text_area("Enter the text you want to translate:")
     if user_input:
         target_language = st.selectbox("Select the target language", ["French", "Spanish", "German", "Arabic"])
         lang_codes = {"French": "fr", "Spanish": "es", "German": "de", "Arabic": "ar"}
-        if st.button("Execute Translation"):
+        if st.button("Execute"):
             with st.spinner("Translating the text..."):
                 translator = pipeline("translation", model=f"Helsinki-NLP/opus-mt-en-{lang_codes[target_language]}", trust_remote_code=True)
                 translation = translator(user_input)
@@ -28,7 +28,7 @@ def perform_translation():
 def perform_text_generation():
     user_input = st.text_area("Enter the beginning of your text (the model will generate the continuation):")
     if user_input:
-        if st.button("Execute Text Generation"):
+        if st.button("Execute"):
             with st.spinner("Generating text..."):
                 text_generator = pipeline("text-generation", model="gpt2", trust_remote_code=True)
                 generated_text = text_generator(user_input, max_length=100, num_return_sequences=1)
@@ -37,7 +37,7 @@ def perform_text_generation():
 def perform_ner():
     user_input = st.text_area("Enter text to extract named entities:")
     if user_input:
-        if st.button("Execute NER"):
+        if st.button("Execute"):
             with st.spinner("Extracting named entities..."):
                 ner_pipeline = pipeline("ner", grouped_entities=True, trust_remote_code=True)
                 entities = ner_pipeline(user_input)
@@ -58,7 +58,7 @@ def perform_question_answering():
         st.write(document)
         question = st.text_input("Enter your question:")
         if question:
-            if st.button("Execute Question Answering"):
+            if st.button("Execute"):
                 with st.spinner("Answering your question..."):
                     qa_pipeline = pipeline("question-answering", trust_remote_code=True)
                     answer = qa_pipeline(question=question, context=document)
@@ -86,4 +86,3 @@ elif task == "Question Answering":
 
 # Call garbage collection at the end to free up memory
 gc.collect()
-
